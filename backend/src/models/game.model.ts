@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const GameSchema = new mongoose.Schema(
   {
-    gameId: { type: String, required: true, unique: true },
+    gameId: { type: String, unique: true },
 
     white: { type: String, required: true },
     black: { type: String, required: true },

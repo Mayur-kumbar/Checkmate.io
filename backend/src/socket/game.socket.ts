@@ -8,9 +8,23 @@ const PENDING_QUEUE = "queue:pending_players";
 
 export const initSockets = (io: Server) => {
   io.on("connection", (socket: Socket) => {
+    console.log("New connection:", socket.id);
+    console.log("Authenticated user:", socket.data.userId);
+
     const userId = socket.data.userId;
 
     socket.emit("connected", { userId });
+
+    // Handle Reconnection: If player already in an active game, join room and send update
+    redis.get(`player:${userId}`).then(async (gameId) => {
+      if (gameId) {
+        socket.join(gameId);
+        const game = await GameService.getGame(gameId);
+        if (game) {
+          socket.emit("game_update", game);
+        }
+      }
+    });
 
     socket.on("find_game", async () => {
       // 🚫 already in a game
@@ -111,9 +125,18 @@ export const initSockets = (io: Server) => {
       }
     });
 
-    socket.on("resign", async ({ gameId }) => {
-      if (!gameId) return;
+    socket.on("resign", async ({ payload }) => {
+      let data: any;
+      try {
+        data = typeof payload === "string" ? JSON.parse(payload) : payload;
+      } catch {
+        return socket.emit("invalid_move", "Invalid JSON");
+      }
 
+      const { gameId } = data;
+      if (!gameId) {
+        return socket.emit("invalid_move", "Malformed payload");
+      }
       const game = await GameService.getGame(gameId);
       if (!game || game.status === "finished") return;
 
@@ -141,33 +164,33 @@ export const initSockets = (io: Server) => {
     socket.on("disconnect", async () => {
       console.log("Disconnected:", userId);
 
-      await redis.lRem(PENDING_QUEUE, 0, userId);
+      // await redis.lRem(PENDING_QUEUE, 0, userId);
 
-      const gameId = await redis.get(`player:${userId}`);
-      if (!gameId) return;
+      // const gameId = await redis.get(`player:${userId}`);
+      // if (!gameId) return;
 
-      const game = await GameService.getGame(gameId);
-      if (!game || game.status === "finished") return;
+      // const game = await GameService.getGame(gameId);
+      // if (!game || game.status === "finished") return;
 
-      let abandonedBy: "white" | "black" | null = null;
-      if (userId === game.white) abandonedBy = "white";
-      if (userId === game.black) abandonedBy = "black";
-      if (!abandonedBy) return;
+      // let abandonedBy: "white" | "black" | null = null;
+      // if (userId === game.white) abandonedBy = "white";
+      // if (userId === game.black) abandonedBy = "black";
+      // if (!abandonedBy) return;
 
-      const updatedGame: GameState = {
-        ...game,
-        status: "finished",
-        lastMoveAt: Date.now(),
-      };
+      // const updatedGame: GameState = {
+      //   ...game,
+      //   status: "finished",
+      //   lastMoveAt: Date.now(),
+      // };
 
-      io.to(gameId).emit("game_over", {
-        result: "abandonment",
-        abandonedBy,
-        winner: abandonedBy === "white" ? "black" : "white",
-        moves: updatedGame.moves,
-      });
+      // io.to(gameId).emit("game_over", {
+      //   result: "abandonment",
+      //   abandonedBy,
+      //   winner: abandonedBy === "white" ? "black" : "white",
+      //   moves: updatedGame.moves,
+      // });
 
-      await GameService.persistAbandonedGame(updatedGame, abandonedBy);
+      // await GameService.persistAbandonedGame(updatedGame, abandonedBy);
     });
   });
 };
