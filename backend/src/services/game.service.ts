@@ -99,6 +99,24 @@ export class GameService {
     await redis.del(`game:${game.gameId}`);
   }
 
+  static async persistDrawGame(game: GameState, drawBy: "white" | "black") {
+    const result = "1/2-1/2";
+    const reason = drawBy === "white" ? "white_draw" : "black_draw";
+
+    await GameModel.create({
+      gameId: game.gameId,
+      white: game.white,
+      black: game.black,
+      moves: game.moves,
+      result,
+      reason,
+    });
+
+    await redis.del(`player:${game.white}`);
+    await redis.del(`player:${game.black}`);
+    await redis.del(`game:${game.gameId}`);
+  }
+
   static async persistAbandonedGame(game: GameState, abandonedBy: "white" | "black") {
     const result = abandonedBy === "white" ? "0-1" : "1-0";
 

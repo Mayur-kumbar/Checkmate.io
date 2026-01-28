@@ -9,6 +9,7 @@ export interface GameState {
   moves: string[];     
   turn: Color;
   status: "waiting" | "active" | "finished";
+  drawOffered?: Color | null;
   lastMoveAt: number;
 }
 export interface Move {

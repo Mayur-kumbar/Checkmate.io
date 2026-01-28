@@ -8,8 +8,8 @@ const PENDING_QUEUE = "queue:pending_players";
 
 export const initSockets = (io: Server) => {
   io.on("connection", (socket: Socket) => {
-    console.log("New connection:", socket.id);
-    console.log("Authenticated user:", socket.data.userId);
+    // console.log("New connection:", socket.id);
+    // console.log("Authenticated user:", socket.data.userId);
 
     const userId = socket.data.userId;
 
@@ -21,6 +21,7 @@ export const initSockets = (io: Server) => {
         socket.join(gameId);
         const game = await GameService.getGame(gameId);
         if (game) {
+          socket.emit("already_in_game", { gameId, game });
           socket.emit("game_update", game);
         }
       }
@@ -34,6 +35,7 @@ export const initSockets = (io: Server) => {
       }
 
       let opponentUserId: string | null = null;
+      let opponentSocket: Socket | undefined = undefined;
 
       // 🔁 find valid opponent
       while (true) {
@@ -47,18 +49,27 @@ export const initSockets = (io: Server) => {
         const candidateGame = await redis.get(`player:${candidate}`);
         if (candidateGame) continue;
 
+        // ❌ skip users who are offline
+        const sockets = await io.fetchSockets();
+        const candidateSocket = sockets.find(s => s.data.userId === candidate);
+        if (!candidateSocket) continue;
+
         opponentUserId = candidate;
+        opponentSocket = candidateSocket as unknown as Socket;
         break;
       }
 
       // no opponent → wait
       if (!opponentUserId) {
+        // Clean up self from queue if already there (avoid duplicates)
+        await redis.lRem(PENDING_QUEUE, 0, userId);
         await redis.rPush(PENDING_QUEUE, userId);
         return socket.emit("waiting_for_opponent");
       }
 
       // ✅ create game
       const gameId = uuid();
+      // Service.createGame currently sets white to the first argument
       const game = await GameService.createGame(gameId, opponentUserId);
 
       game.black = userId;
@@ -72,13 +83,14 @@ export const initSockets = (io: Server) => {
 
       // join sockets to room
       socket.join(gameId);
-
-      const opponentSocket = [...io.sockets.sockets.values()]
-        .find(s => s.data.userId === opponentUserId);
-
       opponentSocket?.join(gameId);
 
+      // notify both
       io.to(gameId).emit("game_start", game);
+    });
+
+    socket.on("cancel_find", async () => {
+      await redis.lRem(PENDING_QUEUE, 0, userId);
     });
 
     socket.on("move", async (payload) => {
@@ -112,6 +124,7 @@ export const initSockets = (io: Server) => {
 
       const { updatedGame, chess } = result;
 
+      updatedGame.drawOffered = null;
       await GameService.updateGame(gameId, updatedGame);
       io.to(gameId).emit("game_update", updatedGame);
 
@@ -125,14 +138,7 @@ export const initSockets = (io: Server) => {
       }
     });
 
-    socket.on("resign", async ({ payload }) => {
-      let data: any;
-      try {
-        data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      } catch {
-        return socket.emit("invalid_move", "Invalid JSON");
-      }
-
+    socket.on("resign", async (data: any) => {
       const { gameId } = data;
       if (!gameId) {
         return socket.emit("invalid_move", "Malformed payload");
@@ -161,36 +167,47 @@ export const initSockets = (io: Server) => {
       await GameService.persistResignedGame(updatedGame, resignedBy);
     });
 
+    socket.on("offer_draw", async (data: any) => {
+      const { gameId } = data;
+      // if(!gameId) return socket.emit("invalid_move", "Malformed payload");
+      const game = await GameService.getGame(gameId);
+      if (!game || game.status !== "active") return;
+
+      const playerColor = userId === game.white ? "white" : "black";
+      game.drawOffered = playerColor;
+      await GameService.updateGame(gameId, game);
+
+      io.to(gameId).emit("game_update", game);
+
+    })
+
+    socket.on("accept_draw", async (data: any) => {
+      const { gameId } = data;
+      const game = await GameService.getGame(gameId);
+      if (!game || !game.drawOffered) return;
+      const playerColor = userId === game.white ? "white" : "black";
+      // Ensure the person accepting is NOT the one who offered
+      if (game.drawOffered !== playerColor) {
+        game.status = "finished";
+        await GameService.updateGame(gameId, game);
+        io.to(gameId).emit("game_over", { result: "draw", reason: "agreement" });
+        await GameService.persistDrawGame(game, playerColor);
+      }
+    });
+
+    socket.on("reject_draw", async (data: any) => {
+      const { gameId } = data;
+      const game = await GameService.getGame(gameId);
+      if (!game) return;
+
+      game.drawOffered = null; // Clear the offer
+      await GameService.updateGame(gameId, game);
+      io.to(gameId).emit("game_update", game);
+    });
+
     socket.on("disconnect", async () => {
-      console.log("Disconnected:", userId);
-
-      // await redis.lRem(PENDING_QUEUE, 0, userId);
-
-      // const gameId = await redis.get(`player:${userId}`);
-      // if (!gameId) return;
-
-      // const game = await GameService.getGame(gameId);
-      // if (!game || game.status === "finished") return;
-
-      // let abandonedBy: "white" | "black" | null = null;
-      // if (userId === game.white) abandonedBy = "white";
-      // if (userId === game.black) abandonedBy = "black";
-      // if (!abandonedBy) return;
-
-      // const updatedGame: GameState = {
-      //   ...game,
-      //   status: "finished",
-      //   lastMoveAt: Date.now(),
-      // };
-
-      // io.to(gameId).emit("game_over", {
-      //   result: "abandonment",
-      //   abandonedBy,
-      //   winner: abandonedBy === "white" ? "black" : "white",
-      //   moves: updatedGame.moves,
-      // });
-
-      // await GameService.persistAbandonedGame(updatedGame, abandonedBy);
+      // console.log("Disconnected:", userId);
+      await redis.lRem(PENDING_QUEUE, 0, userId);
     });
   });
 };

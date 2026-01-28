@@ -10,7 +10,13 @@ import authRoutes from "./routes/auth.routes";
 import { socketAuth } from "./socket/auth.middleware";
 
 const app = express();
-app.use(cors());
+app.use(cors(
+  {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true,
+  }
+));
 app.use(express.json());
 
 try {
@@ -24,7 +30,7 @@ try {
     process.exit(1);
 }
 
-app.use("/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 
 const server = http.createServer(app);
 
