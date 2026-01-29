@@ -8,6 +8,7 @@ import { connectDB } from "./db/index";
 import { redis } from "./utils/redis";
 import authRoutes from "./routes/auth.routes";
 import { socketAuth } from "./socket/auth.middleware";
+import cookieParser from "cookie-parser";
 
 const app = express();
 app.use(cors(
@@ -18,16 +19,17 @@ app.use(cors(
   }
 ));
 app.use(express.json());
+app.use(cookieParser());
 
 try {
-    connectDB();
-    redis.on("error", (err) => {
-        console.error("Redis connection error:", err);
-    });
+  connectDB();
+  redis.on("error", (err) => {
+    console.error("Redis connection error:", err);
+  });
 
 } catch (error) {
-    console.error("Failed to connect to database:", error);
-    process.exit(1);
+  console.error("Failed to connect to database:", error);
+  process.exit(1);
 }
 
 app.use("/api/auth", authRoutes);
@@ -36,8 +38,9 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST"],
+    credentials: true,
   }
 });
 

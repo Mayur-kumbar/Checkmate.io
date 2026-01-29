@@ -1,5 +1,10 @@
-export function getToken() {
-  return typeof window !== "undefined"
-    ? localStorage.getItem("token")
-    : null;
+import api from "./api";
+
+export async function isAuthenticated() {
+  try {
+    const res = await api.get("/auth/me");
+    return res.data.success;
+  } catch {
+    return false;
+  }
 }

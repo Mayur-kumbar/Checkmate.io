@@ -1,12 +1,9 @@
 import { io } from "socket.io-client";
 
 export function createSocket() {
-  const token = localStorage.getItem("token");
-
   return io("http://localhost:4000", {
-    auth: {
-      token,
-    },
+    withCredentials: true,
     autoConnect: false,
+    transports: ["polling", "websocket"], // Polling first is better for cookies
   });
 }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,16 +15,15 @@ export default function LoginPage() {
   async function login() {
     setIsLoading(true);
     try {
-      const res = await api.post("/auth/login", { username, password });
-      console.log(res.data);
+      const res = await api.post("/auth/login", { identifier, password });
       if (res.data.success) {
-        localStorage.setItem("token", res.data.token);
-        router.push("/lobby")
+        router.push("/lobby");
       } else {
-        alert(res.data.message || "Login failed");
+        alert(res.data.error || "Login failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
+      alert(error.response?.data?.error || "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -59,17 +58,17 @@ export default function LoginPage() {
             }}
             className="space-y-6"
           >
-            {/* Username Input */}
+            {/* Identifier Input */}
             <div className="space-y-2">
-              <label htmlFor="username" className="block text-sm font-medium text-gray-300">
-                Username
+              <label htmlFor="identifier" className="block text-sm font-medium text-gray-300">
+                Username or Email
               </label>
               <input
-                id="username"
+                id="identifier"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Enter your username or email"
                 className="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required
               />
@@ -93,9 +92,9 @@ export default function LoginPage() {
 
             {/* Forgot Password Link */}
             <div className="flex justify-end">
-              <a href="#" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+              <Link href="/forgot-password" title="Forgot Password" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Login Button */}

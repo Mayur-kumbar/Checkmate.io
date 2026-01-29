@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createSocket } from "@/lib/socket";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 export default function LobbyPage() {
   const socketRef = useRef<any>(null);
@@ -13,21 +14,34 @@ export default function LobbyPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Get username from localStorage or token
-    const storedUsername = localStorage.getItem("username") || "Player";
-    setUsername(storedUsername);
-
     const socket = createSocket();
     socketRef.current = socket;
 
-    socket.connect();
+    // Fetch user profile on mount
+    const initLobby = async () => {
+      try {
+        const res = await api.get("/auth/me");
+        if (res.data.success) {
+          setUsername(res.data.user.username);
+          // Only connect socket AFTER we are sure we have a valid session/cookie
+          socket.connect();
+        } else {
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/login");
+      }
+    };
+
+    initLobby();
 
     socket.on("connect", () => {
       console.log("Socket connected:", socket.id);
     });
 
+    // ... rest of socket event handlers
     socket.on("waiting_for_opponent", () => {
-      console.log("Waiting...");
       setIsWaiting(true);
     });
 
@@ -36,7 +50,6 @@ export default function LobbyPage() {
     });
 
     socket.on("already_in_game", (data: any) => {
-      console.log("Already in an active game:", data.gameId);
       router.push(`/game/${data.gameId}`);
     });
 
@@ -48,18 +61,17 @@ export default function LobbyPage() {
       setIsWaiting(false);
       socket.disconnect();
     };
-  }, []);
+  }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+      router.push("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      router.push("/"); // Fallback redirect
+    }
   };
-
-  if (!localStorage.getItem("token")) {
-    window.location.href = "/";
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -114,7 +126,7 @@ export default function LobbyPage() {
                   <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-purple-500 border-b-transparent border-l-transparent animate-spin"></div>
                   <div className="absolute inset-4 rounded-full border-4 border-purple-500/20"></div>
                   <div className="absolute inset-4 rounded-full border-4 border-t-transparent border-r-transparent border-b-purple-500 border-l-blue-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }}></div>
-                  
+
                   {/* Center chess piece */}
                   <div className="absolute inset-0 flex items-center justify-center text-5xl">
                     ♔
@@ -141,10 +153,9 @@ export default function LobbyPage() {
                 className={`
                   w-full max-w-md px-8 py-6 rounded-xl font-bold text-xl
                   transition-all duration-300 transform
-                  ${
-                    isWaiting
-                      ? "bg-gray-700 cursor-not-allowed opacity-50"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+                  ${isWaiting
+                    ? "bg-gray-700 cursor-not-allowed opacity-50"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
                   }
                 `}
               >
