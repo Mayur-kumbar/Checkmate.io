@@ -7,6 +7,7 @@ import { initSockets } from "./socket/game.socket";
 import { connectDB } from "./db/index";
 import { redis } from "./utils/redis";
 import authRoutes from "./routes/auth.routes";
+import userRoutes from "./routes/user.routes";
 import { socketAuth } from "./socket/auth.middleware";
 import cookieParser from "cookie-parser";
 
@@ -33,6 +34,7 @@ try {
 }
 
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
 const server = http.createServer(app);
 

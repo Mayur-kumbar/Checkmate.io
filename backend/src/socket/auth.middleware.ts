@@ -45,7 +45,7 @@ export async function socketAuth(socket: any, next: any) {
 
       socket.data.userId = userId;
       socket.data.sessionId = decoded.sessionId;
-      console.log(`Socket Auth Success: User ${userId}`);
+      // console.log(`Socket Auth Success: User ${userId}`);
       next();
     } catch (jwtErr: any) {
       console.error("Socket Auth Error: JWT failed", jwtErr.message);

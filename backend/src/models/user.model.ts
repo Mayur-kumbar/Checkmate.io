@@ -11,6 +11,9 @@ export interface IUser extends Document {
   verificationCodeExpire?: Date;
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
+  wins: number;
+  losses: number;
+  draws: number;
   createdAt: Date;
 }
 
@@ -67,6 +70,18 @@ const UserSchema = new Schema<IUser>({
     default: null,
   },
 
+  wins: {
+    type: Number,
+    default: 0,
+  },
+  losses: {
+    type: Number,
+    default: 0,
+  },
+  draws: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

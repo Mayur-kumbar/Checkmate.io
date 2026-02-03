@@ -6,10 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
+import UserSearch from "@/components/UserSearch";
+
 export default function LobbyPage() {
   const socketRef = useRef<any>(null);
   const [isWaiting, setIsWaiting] = useState(false);
-  const [username, setUsername] = useState("");
+  const [user, setUser] = useState<any>(null);
 
   const router = useRouter();
 
@@ -22,7 +24,7 @@ export default function LobbyPage() {
       try {
         const res = await api.get("/auth/me");
         if (res.data.success) {
-          setUsername(res.data.user.username);
+          setUser(res.data.user);
           // Only connect socket AFTER we are sure we have a valid session/cookie
           socket.connect();
         } else {
@@ -87,8 +89,14 @@ export default function LobbyPage() {
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-300">{username}</span>
+              <span className="text-sm text-gray-300">{user?.username}</span>
             </div>
+            <Link
+              href={`/profile/${user?.username}`}
+              className="px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 transition-all text-sm"
+            >
+              My Profile
+            </Link>
             <button
               onClick={handleLogout}
               className="px-4 py-2 rounded-lg border border-gray-600 hover:border-gray-500 hover:bg-gray-800 transition-all duration-200 text-sm"
@@ -102,12 +110,17 @@ export default function LobbyPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 md:py-20">
         <div className="max-w-4xl mx-auto">
+          {/* Search Section */}
+          <div className="flex justify-center mb-12">
+            <UserSearch />
+          </div>
+
           {/* Welcome Section */}
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Welcome to the{" "}
+              Welcome back,{" "}
               <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                Lobby
+                {user?.username}
               </span>
             </h2>
             <p className="text-xl text-gray-400">
@@ -115,24 +128,18 @@ export default function LobbyPage() {
             </p>
           </div>
 
-          {/* Main Game Finder Card */}
+          {/* Main Game Finder Card ... */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 md:p-12 shadow-2xl mb-8">
-            {/* Waiting Animation */}
+            {/* ... inner contents remain same ... */}
             {isWaiting && (
               <div className="mb-8 flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-6">
-                  {/* Spinning rings */}
                   <div className="absolute inset-0 rounded-full border-4 border-blue-500/20"></div>
                   <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-purple-500 border-b-transparent border-l-transparent animate-spin"></div>
                   <div className="absolute inset-4 rounded-full border-4 border-purple-500/20"></div>
                   <div className="absolute inset-4 rounded-full border-4 border-t-transparent border-r-transparent border-b-purple-500 border-l-blue-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }}></div>
-
-                  {/* Center chess piece */}
-                  <div className="absolute inset-0 flex items-center justify-center text-5xl">
-                    ♔
-                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center text-5xl">♔</div>
                 </div>
-
                 <div className="space-y-2 text-center">
                   <h3 className="text-2xl font-semibold text-blue-400">Searching for opponent...</h3>
                   <p className="text-gray-400">This won't take long</p>
@@ -145,78 +152,43 @@ export default function LobbyPage() {
               </div>
             )}
 
-            {/* Find Game Button */}
             <div className="flex flex-col items-center gap-4">
               <button
                 disabled={isWaiting}
                 onClick={() => socketRef.current?.emit("find_game")}
-                className={`
-                  w-full max-w-md px-8 py-6 rounded-xl font-bold text-xl
-                  transition-all duration-300 transform
-                  ${isWaiting
-                    ? "bg-gray-700 cursor-not-allowed opacity-50"
-                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
-                  }
-                `}
-              >
+                className={`w-full max-w-md px-8 py-6 rounded-xl font-bold text-xl transition-all duration-300 transform ${isWaiting ? "bg-gray-700 cursor-not-allowed opacity-50" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"}`}>
                 {isWaiting ? (
                   <span className="flex items-center justify-center gap-3">
                     <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     Searching...
                   </span>
                 ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>⚔️</span>
-                    Find Game
-                  </span>
+                  <span className="flex items-center justify-center gap-2">⚔️ Find Game</span>
                 )}
               </button>
-
-              {isWaiting && (
-                <button
-                  onClick={() => {
-                    setIsWaiting(false);
-                    socketRef.current?.emit("cancel_find");
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors text-sm underline"
-                >
-                  Cancel search
-                </button>
-              )}
+              {isWaiting && <button onClick={() => { setIsWaiting(false); socketRef.current?.emit("cancel_find"); }} className="text-gray-400 hover:text-white transition-colors text-sm underline">Cancel search</button>}
             </div>
           </div>
 
-          {/* Quick Stats Grid */}
+          {/* Real Stats Grid */}
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-6 text-center hover:border-gray-600 transition-all duration-200">
               <div className="text-3xl mb-2">🏆</div>
-              <div className="text-2xl font-bold text-blue-400 mb-1">0</div>
-              <div className="text-sm text-gray-400">Games Won</div>
+              <div className="text-2xl font-bold text-blue-400 mb-1">{user?.wins || 0}</div>
+              <div className="text-sm text-gray-400">Wins</div>
             </div>
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-6 text-center hover:border-gray-600 transition-all duration-200">
-              <div className="text-3xl mb-2">📊</div>
-              <div className="text-2xl font-bold text-purple-400 mb-1">1200</div>
-              <div className="text-sm text-gray-400">Rating</div>
+              <div className="text-3xl mb-2">🤝</div>
+              <div className="text-2xl font-bold text-purple-400 mb-1">{user?.draws || 0}</div>
+              <div className="text-sm text-gray-400">Draws</div>
             </div>
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-6 text-center hover:border-gray-600 transition-all duration-200">
-              <div className="text-3xl mb-2">🎮</div>
-              <div className="text-2xl font-bold text-pink-400 mb-1">0</div>
-              <div className="text-sm text-gray-400">Games Played</div>
+              <div className="text-3xl mb-2">❌</div>
+              <div className="text-2xl font-bold text-pink-400 mb-1">{user?.losses || 0}</div>
+              <div className="text-sm text-gray-400">Losses</div>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import { Chess } from "chess.js";
 import { redis } from "../utils/redis";
 import { GameState } from "../types/game";
 import { GameModel } from "../models/game.model";
+import { UserModel } from "../models/user.model";
 
 export class GameService {
 
@@ -77,6 +78,18 @@ export class GameService {
       reason: chess.isCheckmate() ? "checkmate" : "draw",
     });
 
+    // Update stats
+    if (result === "1-0") {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { wins: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { losses: 1 } });
+    } else if (result === "0-1") {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { losses: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { wins: 1 } });
+    } else {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { draws: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { draws: 1 } });
+    }
+
     await redis.del(`player:${game.white}`);
     await redis.del(`player:${game.black}`);
     await redis.del(`game:${game.gameId}`);
@@ -93,6 +106,15 @@ export class GameService {
       result,
       reason: "resignation",
     });
+
+    // Update stats
+    if (result === "1-0") {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { wins: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { losses: 1 } });
+    } else {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { losses: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { wins: 1 } });
+    }
 
     await redis.del(`player:${game.white}`);
     await redis.del(`player:${game.black}`);
@@ -112,6 +134,10 @@ export class GameService {
       reason,
     });
 
+    // Update stats
+    await UserModel.findByIdAndUpdate(game.white, { $inc: { draws: 1 } });
+    await UserModel.findByIdAndUpdate(game.black, { $inc: { draws: 1 } });
+
     await redis.del(`player:${game.white}`);
     await redis.del(`player:${game.black}`);
     await redis.del(`game:${game.gameId}`);
@@ -128,6 +154,15 @@ export class GameService {
       result,
       reason: "abandonment",
     });
+
+    // Update stats
+    if (result === "1-0") {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { wins: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { losses: 1 } });
+    } else {
+      await UserModel.findByIdAndUpdate(game.white, { $inc: { losses: 1 } });
+      await UserModel.findByIdAndUpdate(game.black, { $inc: { wins: 1 } });
+    }
 
     await redis.del(`player:${game.white}`);
     await redis.del(`player:${game.black}`);
