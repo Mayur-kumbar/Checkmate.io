@@ -17,6 +17,8 @@ export class GameService {
       moves: [],
       turn: "white",
       status: "waiting",
+      whiteTime: 600000,
+      blackTime: 600000,
       lastMoveAt: Date.now(),
     };
 
@@ -50,6 +52,9 @@ export class GameService {
     if (!result) return null;
 
     const isFinished = chess.isGameOver();
+    const now = Date.now();
+    // Only deduct time if it's not the very first move
+    const elapsed = game.moves.length > 0 ? now - game.lastMoveAt : 0;
 
     const updatedGame: GameState = {
       ...game,
@@ -57,7 +62,9 @@ export class GameService {
       moves: [...game.moves, result.san],
       turn: chess.turn() === "w" ? "white" : "black",
       status: isFinished ? "finished" : "active",
-      lastMoveAt: Date.now(),
+      whiteTime: game.turn === "white" ? Math.max(0, game.whiteTime - elapsed) : game.whiteTime,
+      blackTime: game.turn === "black" ? Math.max(0, game.blackTime - elapsed) : game.blackTime,
+      lastMoveAt: now,
     };
 
     return { updatedGame, chess };

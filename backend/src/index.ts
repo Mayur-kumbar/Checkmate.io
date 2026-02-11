@@ -14,7 +14,7 @@ import cookieParser from "cookie-parser";
 const app = express();
 app.use(cors(
   {
-    origin: "http://localhost:3000",
+    origin: ENV.CORS_ORIGIN,
     methods: ["GET", "POST"],
     credentials: true,
   }
@@ -32,6 +32,10 @@ try {
   console.error("Failed to connect to database:", error);
   process.exit(1);
 }
+
+app.get("/health", (req, res) => {
+  res.json({ message: "OK" });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);

@@ -215,6 +215,43 @@ export default function GamePage() {
     alert("Draw rejected!");
   };
 
+  const formatTime = (ms: number) => {
+    if (ms <= 0) return "00:00";
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!gameRef.current || gameRef.current.status !== "active") return;
+
+      const turn = gameRef.current.turn;
+      const now = Date.now();
+      const elapsed = now - gameRef.current.lastMoveAt;
+
+      const whiteRemaining = turn === "white"
+        ? Math.max(0, gameRef.current.whiteTime - elapsed)
+        : gameRef.current.whiteTime;
+
+      const blackRemaining = turn === "black"
+        ? Math.max(0, gameRef.current.blackTime - elapsed)
+        : gameRef.current.blackTime;
+
+      setTimer({
+        white: formatTime(whiteRemaining),
+        black: formatTime(blackRemaining),
+      });
+
+      if (whiteRemaining <= 0 || blackRemaining <= 0) {
+        // Technically the server should handle this, but we can nudge it
+        socketRef.current?.emit("check_timeout", { gameId });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameId]);
+
   useEffect(() => {
     const socket = createSocket();
     socketRef.current = socket;
@@ -232,6 +269,12 @@ export default function GamePage() {
     socket.on("game_update", (game: any) => {
       console.log("Game update received", { fen: game.fen, turn: game.turn });
       gameRef.current = game;
+
+      // Update timers immediately on sync
+      setTimer({
+        white: formatTime(game.whiteTime),
+        black: formatTime(game.blackTime),
+      });
 
       // Load current state into chess engine
       chessRef.current.load(game.fen);
@@ -372,10 +415,12 @@ export default function GamePage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-mono font-bold">{timer.black}</div>
-                {/* Captured pieces by opponent */}
+                <div className="text-lg font-mono font-bold">
+                  {playerColor === "white" ? timer.black : timer.white}
+                </div>
+                {/* Captured pieces by opponent (Opponent color) */}
                 <div className="flex gap-0.5 mt-1 justify-end">
-                  {(playerColor === "white" ? capturedPieces.white : capturedPieces.black).slice(0, 8).map((piece, i) => (
+                  {(playerColor === "white" ? capturedPieces.black : capturedPieces.white).slice(0, 8).map((piece, i) => (
                     <span key={i} className="text-xs opacity-60">{pieceSymbols[piece]}</span>
                   ))}
                 </div>
@@ -420,10 +465,12 @@ export default function GamePage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-mono font-bold">{timer.white}</div>
-                {/* Captured pieces by you */}
+                <div className="text-lg font-mono font-bold">
+                  {playerColor === "white" ? timer.white : timer.black}
+                </div>
+                {/* Captured pieces by you (Your color) */}
                 <div className="flex gap-0.5 mt-1 justify-end">
-                  {(playerColor === "white" ? capturedPieces.black : capturedPieces.white).slice(0, 8).map((piece, i) => (
+                  {(playerColor === "white" ? capturedPieces.white : capturedPieces.black).slice(0, 8).map((piece, i) => (
                     <span key={i} className="text-xs opacity-60">{pieceSymbols[piece]}</span>
                   ))}
                 </div>

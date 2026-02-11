@@ -10,4 +10,5 @@ export const ENV = {
   EMAIL_PORT: Number(process.env.EMAIL_PORT) || 587,
   EMAIL_USER: process.env.EMAIL_USER!,
   EMAIL_PASS: process.env.EMAIL_PASS!,
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
 };

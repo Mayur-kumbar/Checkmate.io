@@ -267,8 +267,8 @@ export const handleResetPassword = async (req: Request, res: Response) => {
     }
 
     user.passwordHash = await bcrypt.hash(password, 12);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    user.resetPasswordToken ;
+    user.resetPasswordExpire;
     await user.save();
 
     // Optionally, invalidate all sessions on password change

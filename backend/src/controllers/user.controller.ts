@@ -89,3 +89,4 @@ export const handleGamesPlayed = async (req: Request, res: Response) => {
         })
     }
 }
+

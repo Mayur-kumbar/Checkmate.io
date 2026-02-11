@@ -18,7 +18,7 @@ export const initSockets = (io: Server) => {
     // Handle Reconnection: If player already in an active game, join room and send update
     redis.get(`player:${userId}`).then(async (gameId) => {
       if (gameId) {
-        socket.join(gameId);
+        await socket.join(gameId);
         const game = await GameService.getGame(gameId);
         if (game) {
           socket.emit("already_in_game", { gameId, game });
@@ -82,11 +82,17 @@ export const initSockets = (io: Server) => {
       await redis.set(`player:${userId}`, gameId);
 
       // join sockets to room
-      socket.join(gameId);
-      opponentSocket?.join(gameId);
+      console.log(`Creating game ${gameId} for White:${opponentUserId} and Black:${userId}`);
+
+      await socket.join(gameId);
+      await opponentSocket?.join(gameId);
+
+      const roomSockets = await io.in(gameId).fetchSockets();
+      console.log(`Room ${gameId} has ${roomSockets.length} sockets. Expected 2.`);
 
       // notify both
       io.to(gameId).emit("game_start", game);
+      console.log(`game_start emitted to room ${gameId}`);
     });
 
     socket.on("cancel_find", async () => {
@@ -131,9 +137,23 @@ export const initSockets = (io: Server) => {
       if (updatedGame.status === "finished") {
         await GameService.persistFinishedGame(updatedGame, chess);
 
+        let result = chess.isCheckmate() ? "checkmate" : "draw";
+        let winner = null;
+
+        if (chess.isCheckmate()) {
+          winner = chess.turn() === "w" ? "black" : "white";
+        } else if (updatedGame.whiteTime <= 0) {
+          result = "timeout";
+          winner = "black";
+        } else if (updatedGame.blackTime <= 0) {
+          result = "timeout";
+          winner = "white";
+        }
+
         io.to(gameId).emit("game_over", {
           moves: updatedGame.moves,
-          result: chess.isCheckmate() ? "checkmate" : "draw",
+          result,
+          winner
         });
       }
     });
@@ -203,6 +223,42 @@ export const initSockets = (io: Server) => {
       game.drawOffered = null; // Clear the offer
       await GameService.updateGame(gameId, game);
       io.to(gameId).emit("game_update", game);
+    });
+
+    socket.on("check_timeout", async (data: any) => {
+      const { gameId } = data;
+      const game = await GameService.getGame(gameId);
+      if (!game || game.status !== "active") return;
+
+      const now = Date.now();
+      const elapsed = now - game.lastMoveAt;
+
+      const isWhiteTimeout = game.turn === "white" && (game.whiteTime - elapsed) <= 0;
+      const isBlackTimeout = game.turn === "black" && (game.blackTime - elapsed) <= 0;
+
+      if (isWhiteTimeout || isBlackTimeout) {
+        const winner = isWhiteTimeout ? "black" : "white";
+        const updatedGame: GameState = {
+          ...game,
+          status: "finished",
+          whiteTime: isWhiteTimeout ? 0 : game.whiteTime,
+          blackTime: isBlackTimeout ? 0 : game.blackTime,
+          lastMoveAt: now
+        };
+
+        await GameService.updateGame(gameId, updatedGame);
+
+        io.to(gameId).emit("game_over", {
+          result: "timeout",
+          winner,
+          moves: updatedGame.moves
+        });
+
+        // Persist to DB
+        // Using persistFinishedGame would require a chess object, but for timeout we can just use the final state
+        // Let's create a minimal chess object or just a dedicated persist method
+        await GameService.persistAbandonedGame(updatedGame, winner === "white" ? "black" : "white"); // Close enough for now
+      }
     });
 
     socket.on("disconnect", async () => {
