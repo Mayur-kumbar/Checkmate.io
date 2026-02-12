@@ -13,13 +13,17 @@ import { socketAuth } from "./socket/auth.middleware";
 import cookieParser from "cookie-parser";
 
 const app = express();
-app.use(cors(
-  {
-    origin: ENV.CORS_ORIGIN,
-    methods: ["GET", "POST"],
-    credentials: true,
-  }
-));
+
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    ENV.CORS_ORIGIN
+  ],
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -28,13 +32,12 @@ try {
   redis.on("error", (err) => {
     console.error("Redis connection error:", err);
   });
-
 } catch (error) {
   console.error("Failed to connect to database:", error);
   process.exit(1);
 }
 
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ message: "OK" });
 });
 
@@ -46,15 +49,20 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000", ENV.SOCKET_ORIGIN],
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      ENV.SOCKET_ORIGIN
+    ],
     methods: ["GET", "POST"],
     credentials: true,
-  }
+  },
+  path: "/socket.io",
 });
 
 io.use(socketAuth);
 initSockets(io);
 
-server.listen(ENV.PORT, () => {
+server.listen(ENV.PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${ENV.PORT}`);
 });
