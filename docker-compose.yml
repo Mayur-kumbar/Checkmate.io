@@ -2,33 +2,33 @@ name: checkmate-io
 
 services:
   backend:
-    build:
-      context: ./backend
+    image: mayurkumbar05/checkmate-backend:latest
+    container_name: checkmate-backend
     ports:
       - "4000:4000"
-    env_file: backend/.env
+    env_file:
+      - backend/.env
     environment:
       - REDIS_URL=redis://redis:6379
-    dns:
-      - 8.8.8.8
     depends_on:
       - redis
+    restart: always
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - NEXT_PUBLIC_API_URL=http://localhost:4000/api
-
+    image: mayurkumbar05/checkmate-frontend:latest
+    container_name: checkmate-frontend
     ports:
       - "3000:3000"
     depends_on:
       - backend
+    restart: always
 
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
+    container_name: checkmate-redis
     volumes:
-      - redis_data:/redis_data
+      - redis_data:/data
+    restart: always
 
 volumes:
   redis_data:
