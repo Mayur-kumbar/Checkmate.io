@@ -7,10 +7,10 @@ export interface IUser extends Document {
   passwordHash?: string | null;
   authProvider: "local" | "google";
   isVerified: boolean;
-  verificationCode?: string;
-  verificationCodeExpire?: Date;
-  resetPasswordToken?: string;
-  resetPasswordExpire?: Date;
+  verificationCode?: string | null;
+  verificationCodeExpire?: Date | null;
+  resetPasswordToken?: string | null;
+  resetPasswordExpire?: Date | null;
   wins: number;
   losses: number;
   draws: number;

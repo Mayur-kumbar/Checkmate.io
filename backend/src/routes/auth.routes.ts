@@ -21,6 +21,7 @@ router.post("/logout-all", protect, auth.handleLogoutAll);
 
 // Password recovery
 router.post("/forgot-password", auth.handleForgotPassword);
+router.post("/reset-password/verify", auth.handleVerifyResetCode);
 router.post("/reset-password", auth.handleResetPassword);
 
 export default router;

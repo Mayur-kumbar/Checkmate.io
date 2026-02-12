@@ -220,63 +220,86 @@ export const handleLogoutAll = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// 8. FORGOT PASSWORD
+// 8. FORGOT PASSWORD: Send 6-digit code
 export const handleForgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: "Email is required" });
+
     const user = await UserModel.findOne({ email: email.toLowerCase(), isVerified: true });
 
     if (!user) {
-      // Don't reveal if user exists or not for security, but in this context maybe return success
-      return res.status(200).json({ success: true, message: "If an account exists, a reset link has been sent" });
+      // Don't reveal if user exists, but always return success for security
+      return res.status(200).json({ success: true, message: "If an account exists, a reset code has been sent" });
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    user.resetPasswordExpire = new Date(Date.now() + 3600000); // 1 hour
-    await user.save();
-
-    // In a real app, send a link. Here just send the token as a "code" for simplicity or a full link if requested.
-    const resetUrl = `${req.protocol}://${req.get("host")}/reset-password/${resetToken}`;
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Store code in redis for 15 mins
+    await redis.set(`reset_code:${email.toLowerCase()}`, code, { EX: 900 });
 
     await sendEmail(
       user.email,
-      "Password Reset Request",
-      `<h1>Reset your password</h1><p>Click <a href="${resetUrl}">here</a> to reset. Link expires in 1 hour.</p>`
+      "Password Reset Code",
+      `<h1>Your password reset code is: ${code}</h1><p>Code expires in 15 minutes.</p>`
     );
 
-    res.status(200).json({ success: true, message: "Reset link sent to email" });
+    res.status(200).json({ success: true, message: "Reset code sent to email" });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// 9. RESET PASSWORD
+// 8.1 VERIFY RESET CODE
+export const handleVerifyResetCode = async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ success: false, error: "Email and code are required" });
+
+    const savedCode = await redis.get(`reset_code:${email.toLowerCase()}`);
+    if (!savedCode || savedCode !== code) {
+      return res.status(400).json({ success: false, error: "Invalid or expired verification code" });
+    }
+
+    // Generate a temporary reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    await redis.set(`reset_token:${resetToken}`, email.toLowerCase(), { EX: 1800 }); // 30 mins
+
+    res.status(200).json({ success: true, resetToken });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// 9. RESET PASSWORD: Final Step
 export const handleResetPassword = async (req: Request, res: Response) => {
   try {
     const { token, password } = req.body;
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    if (!token || !password) return res.status(400).json({ success: false, error: "Token and password are required" });
 
-    const user = await UserModel.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: new Date() }
-    });
+    const email = await redis.get(`reset_token:${token}`);
+    if (!email) {
+      return res.status(400).json({ success: false, error: "Reset session expired or invalid" });
+    }
 
+    const user = await UserModel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ success: false, error: "Invalid or expired reset token" });
+      return res.status(404).json({ success: false, error: "User not found" });
     }
 
     user.passwordHash = await bcrypt.hash(password, 12);
-    user.resetPasswordToken ;
-    user.resetPasswordExpire;
+    // Clear legacy fields if they exist
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
     await user.save();
 
-    // Optionally, invalidate all sessions on password change
+    // Invalidate all sessions on password change
     const sessions = await redis.sMembers(`user_sessions:${user._id}`);
     for (const sid of sessions) {
       await redis.del(`session:${sid}`);
     }
     await redis.del(`user_sessions:${user._id}`);
+    await redis.del(`reset_token:${token}`);
+    await redis.del(`reset_code:${email.toLowerCase()}`);
 
     res.status(200).json({ success: true, message: "Password updated successfully. Please log in again." });
   } catch (error: any) {

@@ -6,6 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { createSocket } from "@/lib/socket";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import api from "@/lib/api";
 
 
 export default function GamePage() {
@@ -38,6 +39,10 @@ export default function GamePage() {
 
   const userIdRef = useRef<string | null>(null);
   const gameRef = useRef<any>(null);
+
+  // Authorization state
+  const [isAuthorizing, setIsAuthorizing] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Helper to get captured pieces
   const updateCapturedPieces = useCallback(() => {
@@ -253,79 +258,97 @@ export default function GamePage() {
   }, [gameId]);
 
   useEffect(() => {
-    const socket = createSocket();
-    socketRef.current = socket;
+    const authorize = async () => {
+      try {
+        const res = await api.get(`/game/${gameId}`);
+        if (res.data.success) {
+          setIsAuthorizing(false);
+          initSocket();
+        }
+      } catch (err: any) {
+        console.error("Authorization failed:", err);
+        setAuthError(err.response?.data?.error || "You are not authorized to view this game.");
+        setIsAuthorizing(false);
+      }
+    };
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+    const initSocket = () => {
+      const socket = createSocket();
+      socketRef.current = socket;
 
-    socket.on("connected", (data: { userId: string }) => {
-      console.log("User identification received:", data.userId);
-      userIdRef.current = data.userId;
-      if (gameRef.current) updatePlayerColor(gameRef.current, data.userId);
-    });
-
-    socket.on("game_update", (game: any) => {
-      console.log("Game update received", { fen: game.fen, turn: game.turn });
-      gameRef.current = game;
-
-      // Update timers immediately on sync
-      setTimer({
-        white: formatTime(game.whiteTime),
-        black: formatTime(game.blackTime),
+      socket.on("connect", () => {
+        console.log("Socket connected:", socket.id);
       });
 
-      // Load current state into chess engine
-      chessRef.current.load(game.fen);
-      setFen(game.fen);
-      updateCapturedPieces();
+      socket.on("connected", (data: { userId: string }) => {
+        console.log("User identification received:", data.userId);
+        userIdRef.current = data.userId;
+        if (gameRef.current) updatePlayerColor(gameRef.current, data.userId);
+      });
 
-      // Update game status
-      if (chessRef.current.isCheckmate()) {
-        setGameStatus("Checkmate!");
-      } else if (chessRef.current.isCheck()) {
-        setGameStatus("Check!");
-      } else if (chessRef.current.isDraw()) {
-        setGameStatus("Draw");
-      } else if (chessRef.current.isStalemate()) {
-        setGameStatus("Stalemate");
-      } else {
-        setGameStatus("");
-      }
+      socket.on("game_update", (game: any) => {
+        console.log("Game update received", { fen: game.fen, turn: game.turn });
+        gameRef.current = game;
 
-      if (userIdRef.current) updatePlayerColor(game, userIdRef.current);
-      setDrawOffered(game.drawOffered || null);
-    });
+        // Update timers immediately on sync
+        setTimer({
+          white: formatTime(game.whiteTime),
+          black: formatTime(game.blackTime),
+        });
 
-    const updatePlayerColor = (game: any, uId: string) => {
-      if (game.white === uId) {
-        setPlayerColor("white");
-      } else if (game.black === uId) {
-        setPlayerColor("black");
-      }
+        // Load current state into chess engine
+        chessRef.current.load(game.fen);
+        setFen(game.fen);
+        updateCapturedPieces();
+
+        // Update game status
+        if (chessRef.current.isCheckmate()) {
+          setGameStatus("Checkmate!");
+        } else if (chessRef.current.isCheck()) {
+          setGameStatus("Check!");
+        } else if (chessRef.current.isDraw()) {
+          setGameStatus("Draw");
+        } else if (chessRef.current.isStalemate()) {
+          setGameStatus("Stalemate");
+        } else {
+          setGameStatus("");
+        }
+
+        if (userIdRef.current) updatePlayerColor(game, userIdRef.current);
+        setDrawOffered(game.drawOffered || null);
+      });
+
+      socket.on("game_over", (data: any) => {
+        alert(`Game over: ${data.result}`);
+        router.push("/lobby");
+      });
+
+      socket.on("invalid_move", (msg: string) => {
+        console.error("Server rejected move:", msg);
+        // Revert local state if server says no
+        if (gameRef.current) {
+          chessRef.current.load(gameRef.current.fen);
+          setFen(gameRef.current.fen);
+        }
+      });
+
+      socket.connect();
     };
 
-    socket.on("game_over", (data: any) => {
-      alert(`Game over: ${data.result}`);
-      router.push("/lobby");
-    });
-
-    socket.on("invalid_move", (msg: string) => {
-      console.error("Server rejected move:", msg);
-      // Revert local state if server says no
-      if (gameRef.current) {
-        chessRef.current.load(gameRef.current.fen);
-        setFen(gameRef.current.fen);
-      }
-    });
-
-    socket.connect();
+    authorize();
 
     return () => {
-      socket.disconnect();
+      socketRef.current?.disconnect();
     };
-  }, [gameId, updateCapturedPieces]);
+  }, [gameId, updateCapturedPieces, router]);
+
+  const updatePlayerColor = (game: any, uId: string) => {
+    if (game.white === uId) {
+      setPlayerColor("white");
+    } else if (game.black === uId) {
+      setPlayerColor("black");
+    }
+  };
 
   const pieceSymbols: Record<string, string> = {
     p: "♟",
@@ -336,9 +359,29 @@ export default function GamePage() {
     k: "♚",
   };
 
-  if (!localStorage.getItem("token")) {
-    router.push("/");
-    return null;
+  if (isAuthorizing) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <h2 className="text-xl font-semibold">Authorizing access...</h2>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4 text-center">
+        <div className="text-6xl mb-4">🚫</div>
+        <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+        <p className="text-gray-400 mb-6 max-w-md">{authError}</p>
+        <Link
+          href="/lobby"
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors"
+        >
+          Return to Lobby
+        </Link>
+      </div>
+    );
   }
 
   return (

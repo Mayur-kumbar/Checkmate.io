@@ -1,26 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
+    const [code, setCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [isSent, setIsSent] = useState(false);
+    const [step, setStep] = useState(1); // 1: Email, 2: Code
 
-    async function handleSubmit(e: React.FormEvent) {
+    const router = useRouter();
+
+    async function handleEmailSubmit(e: React.FormEvent) {
         e.preventDefault();
         setIsLoading(true);
         try {
             const res = await api.post("/auth/forgot-password", { email });
             if (res.data.success) {
-                setIsSent(true);
+                setStep(2);
             } else {
-                alert(res.data.error || "Failed to send reset link");
+                alert(res.data.error || "Failed to send reset code");
             }
         } catch (error: any) {
-            alert(error.response?.data?.error || "Failed to send reset link");
+            alert(error.response?.data?.error || "Failed to send reset code");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    async function handleVerifyCode(e: React.FormEvent) {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const res = await api.post("/auth/reset-password/verify", { email, code });
+            if (res.data.success) {
+                router.push(`/reset-password/${res.data.resetToken}`);
+            } else {
+                alert(res.data.error || "Invalid verification code");
+            }
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Invalid verification code");
         } finally {
             setIsLoading(false);
         }
@@ -34,29 +55,19 @@ export default function ForgotPasswordPage() {
                         <div className="text-4xl text-blue-400">♔</div>
                         <h1 className="text-3xl font-bold text-white">Checkmate.io</h1>
                     </Link>
-                    <h2 className="text-xl font-semibold text-gray-200 mt-4">Reset your password</h2>
-                    <p className="text-gray-400 mt-2">Enter your email and we'll send you a recovery link</p>
+                    <h2 className="text-xl font-semibold text-gray-200 mt-4">
+                        {step === 1 ? "Reset your password" : "Verify your email"}
+                    </h2>
+                    <p className="text-gray-400 mt-2">
+                        {step === 1
+                            ? "Enter your email and we'll send you a recovery code"
+                            : `Enter the 6-digit code we sent to ${email}`}
+                    </p>
                 </div>
 
                 <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 shadow-xl">
-                    {isSent ? (
-                        <div className="text-center space-y-4">
-                            <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Check your email</h3>
-                            <p className="text-gray-400">If an account exists for {email}, you will receive a reset link shortly.</p>
-                            <Link
-                                href="/login"
-                                className="inline-block w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-white transition-all"
-                            >
-                                Back to Login
-                            </Link>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                    {step === 1 ? (
+                        <form onSubmit={handleEmailSubmit} className="space-y-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-gray-300">Email Address</label>
                                 <input
@@ -73,18 +84,46 @@ export default function ForgotPasswordPage() {
                                 disabled={isLoading}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95"
                             >
-                                {isLoading ? "Sending..." : "Send Reset Link"}
+                                {isLoading ? "Sending..." : "Send Reset Code"}
+                            </button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleVerifyCode} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-300">Verification Code</label>
+                                <input
+                                    type="text"
+                                    maxLength={6}
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                                    placeholder="123456"
+                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold"
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading || code.length !== 6}
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95"
+                            >
+                                {isLoading ? "Verifying..." : "Verify Code"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStep(1)}
+                                className="w-full text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                Change Email
                             </button>
                         </form>
                     )}
 
-                    {!isSent && (
-                        <div className="mt-8 text-center">
-                            <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium">
-                                Wait, I remember my password!
-                            </Link>
-                        </div>
-                    )}
+                    <div className="mt-8 text-center">
+                        <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium">
+                            Back to Login
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
