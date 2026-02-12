@@ -11,4 +11,5 @@ export const ENV = {
   EMAIL_USER: process.env.EMAIL_USER!,
   EMAIL_PASS: process.env.EMAIL_PASS!,
   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
+  SOCKET_ORIGIN: process.env.SOCKET_ORIGIN || "http://localhost:3000",
 };
