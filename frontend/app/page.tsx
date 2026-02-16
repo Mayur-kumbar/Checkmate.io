@@ -112,7 +112,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-700 bg-gray-900/50 backdrop-blur-sm mt-16">
         <div className="container mx-auto px-4 py-8 text-center text-gray-400">
-          <p>&copy; 2024 ChessMaster. All rights reserved.</p>
+          <p>&copy; 2026 Checkmate.io. All rights reserved.</p>
         </div>
       </footer>
     </div>
