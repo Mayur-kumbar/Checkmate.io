@@ -7,6 +7,7 @@ import { createSocket } from "@/lib/socket";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import Header from "@/components/Header";
 
 
 export default function GamePage() {
@@ -43,6 +44,7 @@ export default function GamePage() {
   // Authorization state
   const [isAuthorizing, setIsAuthorizing] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   // Helper to get captured pieces
   const updateCapturedPieces = useCallback(() => {
@@ -262,6 +264,10 @@ export default function GamePage() {
       try {
         const res = await api.get(`/game/${gameId}`);
         if (res.data.success) {
+          // Get user data for header
+          const userRes = await api.get("/auth/me");
+          if (userRes.data.success) setUser(userRes.data.user);
+
           setIsAuthorizing(false);
           initSocket();
         }
@@ -385,99 +391,92 @@ export default function GamePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/lobby" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <div className="text-2xl">←</div>
-              <div className="hidden sm:block text-sm text-gray-400">Back to Lobby</div>
-            </Link>
-            <div className="h-6 w-px bg-gray-700"></div>
-            <div className="flex items-center gap-2">
-              <div className="text-2xl">♔</div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Game #{gameId?.slice(0, 8)}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col">
+      <Header
+        user={user}
+        isGamePage
+        leftActions={
+          <Link href="/lobby" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+            <div className="text-xl md:text-2xl">←</div>
+          </Link>
+        }
+        rightActions={
+          <div className="flex items-center gap-2">
             <button
               onClick={handleOfferDraw}
-              className="px-4 py-2 rounded-lg border border-gray-600 hover:border-gray-500 hover:bg-gray-800 transition-all duration-200 text-sm"
+              className="px-2 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-600 hover:border-gray-500 hover:bg-gray-800 transition-all duration-200 text-[10px] md:text-sm font-medium"
             >
-              Offer Draw
+              Draw
             </button>
             <button
               onClick={handleResign}
-              className="px-4 py-2 rounded-lg border border-red-600 hover:border-red-500 hover:bg-red-900/20 text-red-400 transition-all duration-200 text-sm"
+              className="px-2 py-1.5 md:px-4 md:py-2 rounded-lg border border-red-600/50 hover:border-red-500 hover:bg-red-900/20 text-red-400 transition-all duration-200 text-[10px] md:text-sm font-medium"
             >
               Resign
             </button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* Main Game Area */}
-      <main className="container mx-auto px-4 py-6 lg:py-8">
-        <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
+      <main className="flex-1 container mx-auto px-2 sm:px-4 py-4 md:py-6 lg:py-8">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-6 max-w-7xl mx-auto">
           {/* Left Side - Game Board */}
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-3 md:gap-4">
             {drawOffered && drawOffered !== playerColor && (
-              <div className="bg-blue-600/90 backdrop-blur-sm border border-blue-400 p-4 rounded-xl flex items-center justify-between shadow-lg animate-pulse">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">🤝</span>
-                  <span className="font-semibold">Opponent offers a draw</span>
+              <div className="bg-blue-600/90 backdrop-blur-sm border border-blue-400 p-3 md:p-4 rounded-xl flex items-center justify-between shadow-lg animate-pulse">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <span className="text-lg md:text-xl">🤝</span>
+                  <span className="font-semibold text-xs md:text-base">Opponent offers a draw</span>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleAcceptDraw}
-                    className="bg-green-500 hover:bg-green-600 px-4 py-1.5 rounded-lg font-bold transition-colors shadow-md"
+                    className="bg-green-500 hover:bg-green-600 px-3 py-1 md:px-4 md:py-1.5 rounded-lg font-bold text-xs md:text-sm transition-colors shadow-md"
                   >
                     Accept
                   </button>
                   <button
                     onClick={handleRejectDraw}
-                    className="bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg font-bold transition-colors shadow-md"
+                    className="bg-red-500 hover:bg-red-600 px-3 py-1 md:px-4 md:py-1.5 rounded-lg font-bold text-xs md:text-sm transition-colors shadow-md"
                   >
                     Reject
                   </button>
                 </div>
               </div>
             )}
+
             {/* Opponent Info Card */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center text-xl">
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-3 md:p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center text-lg md:text-xl">
                   {playerColor === "white" ? "♚" : "♔"}
                 </div>
                 <div>
-                  <div className="font-semibold">{playerColor === "white" ? "Black Player" : "White Player"}</div>
-                  <div className="text-sm text-gray-400">Rating: 1200</div>
+                  <div className="font-semibold text-xs md:text-base">{playerColor === "white" ? "Black Player" : "White Player"}</div>
+                  <div className="text-[10px] md:text-sm text-gray-400">Rating: 1200</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-mono font-bold">
+                <div className="text-base md:text-lg font-mono font-bold">
                   {playerColor === "white" ? timer.black : timer.white}
                 </div>
-                {/* Captured pieces by opponent (Opponent color) */}
-                <div className="flex gap-0.5 mt-1 justify-end">
+                <div className="flex gap-0.5 mt-0.5 justify-end">
                   {(playerColor === "white" ? capturedPieces.black : capturedPieces.white).slice(0, 8).map((piece, i) => (
-                    <span key={i} className="text-xs opacity-60">{pieceSymbols[piece]}</span>
+                    <span key={i} className="text-[10px] md:text-xs opacity-60">{pieceSymbols[piece]}</span>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Chess Board */}
-            <div className="relative">
+            {/* Chess Board Container */}
+            <div className="relative w-full aspect-square max-w-[600px] mx-auto group">
               {gameStatus && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-gray-900/95 backdrop-blur-sm border-2 border-yellow-500 rounded-2xl px-8 py-4 shadow-2xl">
-                  <div className="text-3xl font-bold text-yellow-400 text-center">{gameStatus}</div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-gray-900/95 backdrop-blur-sm border-2 border-yellow-500 rounded-2xl px-6 py-3 md:px-8 md:py-4 shadow-2xl">
+                  <div className="text-xl md:text-3xl font-bold text-yellow-400 text-center">{gameStatus}</div>
                 </div>
               )}
-              <div className="w-full max-w-[600px] mx-auto shadow-2xl rounded-xl overflow-hidden border-4 border-gray-700">
+              <div className="w-full h-full shadow-2xl rounded-lg overflow-hidden border-2 md:border-4 border-gray-700">
                 <Chessboard
                   options={{
                     id: "game-board",
@@ -495,39 +494,38 @@ export default function GamePage() {
             </div>
 
             {/* Player Info Card */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xl">
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-3 md:p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-lg md:text-xl">
                   {playerColor === "white" ? "♔" : "♚"}
                 </div>
                 <div>
-                  <div className="font-semibold flex items-center gap-2">
-                    You {playerColor && <span className="text-xs px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded-full">({playerColor})</span>}
+                  <div className="font-semibold text-xs md:text-base flex items-center gap-1.5 md:gap-2">
+                    You {playerColor && <span className="text-[8px] md:text-xs px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded-full">({playerColor})</span>}
                   </div>
-                  <div className="text-sm text-gray-400">Rating: 1200</div>
+                  <div className="text-[10px] md:text-sm text-gray-400">Rating: 1200</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-mono font-bold">
+                <div className="text-base md:text-lg font-mono font-bold">
                   {playerColor === "white" ? timer.white : timer.black}
                 </div>
-                {/* Captured pieces by you (Your color) */}
-                <div className="flex gap-0.5 mt-1 justify-end">
+                <div className="flex gap-0.5 mt-0.5 justify-end">
                   {(playerColor === "white" ? capturedPieces.white : capturedPieces.black).slice(0, 8).map((piece, i) => (
-                    <span key={i} className="text-xs opacity-60">{pieceSymbols[piece]}</span>
+                    <span key={i} className="text-[10px] md:text-xs opacity-60">{pieceSymbols[piece]}</span>
                   ))}
                 </div>
               </div>
             </div>
 
             {/* Turn Indicator */}
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-3 flex items-center justify-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${chessRef.current.turn() === "w" ? "bg-white border-2 border-gray-400" : "bg-gray-900 border-2 border-gray-600"}`} />
-              <span className="font-medium">
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-2 md:p-3 flex items-center justify-center gap-2 md:gap-3">
+              <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${chessRef.current.turn() === "w" ? "bg-white border-2 border-gray-400" : "bg-gray-900 border-2 border-gray-600"}`} />
+              <span className="font-medium text-xs md:text-sm">
                 {chessRef.current.turn() === "w" ? "White's Turn" : "Black's Turn"}
               </span>
               {playerColor && (
-                <span className="text-sm text-gray-400">
+                <span className="text-[10px] md:text-sm text-gray-400">
                   {(chessRef.current.turn() === "w" && playerColor === "white") ||
                     (chessRef.current.turn() === "b" && playerColor === "black")
                     ? "• Your move"
@@ -540,56 +538,58 @@ export default function GamePage() {
 
           {/* Right Side - Move History & Info */}
           <div className="lg:w-80 flex flex-col gap-4">
-            {/* Game Info */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-400 mb-3">GAME INFO</h3>
-              <div className="space-y-2 text-sm">
+            {/* Game Info - Hide on smallest mobile to save space, or keep compact */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-3 md:p-4">
+              <h3 className="text-[10px] md:text-xs font-bold text-gray-400 mb-3 tracking-widest uppercase">Game Details</h3>
+              <div className="space-y-2 text-xs md:text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Time Control:</span>
+                  <span className="text-gray-400">Time:</span>
                   <span className="font-medium">10 min</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Variant:</span>
+                  <span className="text-gray-400">Mode:</span>
                   <span className="font-medium">Standard</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Rated:</span>
-                  <span className="font-medium">Yes</span>
+                  <span className="text-gray-400">Type:</span>
+                  <span className="font-medium">Rated</span>
                 </div>
               </div>
             </div>
 
             {/* Move History */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4 flex-1">
-              <h3 className="text-sm font-semibold text-gray-400 mb-3">MOVE HISTORY</h3>
-              <div className="space-y-1 max-h-96 overflow-y-auto custom-scrollbar">
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-3 md:p-4 flex flex-col flex-1 min-h-[200px] lg:min-h-0">
+              <h3 className="text-[10px] md:text-xs font-bold text-gray-400 mb-3 tracking-widest uppercase">Move History</h3>
+              <div className="flex-1 overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-none pr-1">
                 {moveHistory.length === 0 ? (
-                  <div className="text-center text-gray-500 text-sm py-8">
-                    No moves yet
+                  <div className="text-center text-gray-500 text-xs py-8">
+                    Waiting for first move...
                   </div>
                 ) : (
-                  moveHistory.map((move, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 text-sm py-1.5 px-2 hover:bg-gray-700/30 rounded transition-colors"
-                    >
-                      <span className="text-gray-500 w-8">{Math.floor(index / 2) + 1}.</span>
-                      <span className="font-mono">{move}</span>
-                    </div>
-                  ))
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {moveHistory.map((move, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 text-xs py-1.5 px-2 hover:bg-gray-700/30 rounded transition-colors"
+                      >
+                        <span className="text-gray-500 w-4 font-mono">{index % 2 === 0 ? Math.floor(index / 2) + 1 + "." : ""}</span>
+                        <span className="font-mono font-medium">{move}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-400 mb-3">ACTIONS</h3>
-              <div className="space-y-2">
-                <button className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">
-                  Request Takeback
+            {/* Quick Actions (Keep but style consistently) */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-3 md:p-4 mb-4 lg:mb-0">
+              <h3 className="text-[10px] md:text-xs font-bold text-gray-400 mb-3 tracking-widest uppercase">Quick Actions</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button className="px-2 py-2 bg-gray-700/50 hover:bg-gray-600 rounded-lg transition-colors text-[10px] md:text-xs font-medium">
+                  Takeback
                 </button>
-                <button className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">
-                  Analyze Game
+                <button className="px-2 py-2 bg-gray-700/50 hover:bg-gray-600 rounded-lg transition-colors text-[10px] md:text-xs font-medium">
+                  Analyze
                 </button>
               </div>
             </div>
@@ -605,18 +605,18 @@ export default function GamePage() {
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(55, 65, 81, 0.3);
-          border-radius: 3px;
+          background: rgba(55, 65, 81, 0.1);
+          border-radius: 2px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(107, 114, 128, 0.5);
-          border-radius: 3px;
+          background: rgba(107, 114, 128, 0.3);
+          border-radius: 2px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(107, 114, 128, 0.7);
+          background: rgba(107, 114, 128, 0.5);
         }
       `}</style>
     </div>

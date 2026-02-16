@@ -37,20 +37,20 @@ export default function LoginPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-md relative z-10 py-8">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="text-4xl">♔</div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              ChessMaster
+          <Link href="/" className="inline-flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity">
+            <div className="text-3xl md:text-4xl text-blue-400">♔</div>
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              Checkmate.io
             </h1>
           </Link>
-          <p className="text-gray-400 mt-2">Welcome back! Please login to your account</p>
+          <p className="text-gray-400 mt-2 text-sm md:text-base font-medium">Welcome back! Please login to your account</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-gray-800/60 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <form
             onSubmit={(e) => {
               e.preventDefault();

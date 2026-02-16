@@ -126,9 +126,9 @@ export default function SignupPage() {
 
       <div className="w-full max-w-md relative z-10 transition-all duration-500">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="text-4xl text-blue-400">♔</div>
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <Link href="/" className="inline-flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity">
+            <div className="text-3xl md:text-4xl text-blue-400">♔</div>
+            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Checkmate.io
             </h1>
           </Link>
@@ -231,10 +231,10 @@ export default function SignupPage() {
                   <label className="text-sm font-semibold text-gray-300">Username</label>
                   {username && (
                     <span className={`text-xs font-bold transition-all ${usernameStatus === "available" ? "text-green-400" :
-                        usernameStatus === "taken" ? "text-red-400" :
-                          usernameStatus === "invalid" ? "text-yellow-400" :
-                            usernameStatus === "checking" ? "text-blue-400 animate-pulse" :
-                              "text-gray-500"
+                      usernameStatus === "taken" ? "text-red-400" :
+                        usernameStatus === "invalid" ? "text-yellow-400" :
+                          usernameStatus === "checking" ? "text-blue-400 animate-pulse" :
+                            "text-gray-500"
                       }`}>
                       {usernameStatus === "available" && "✓ Available"}
                       {usernameStatus === "taken" && "✕ Already taken"}
@@ -249,8 +249,8 @@ export default function SignupPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Choose a username"
                   className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white focus:outline-none focus:ring-2 transition-all duration-200 ${usernameStatus === "available" ? "border-green-500/50 focus:ring-green-500" :
-                      usernameStatus === "taken" ? "border-red-500/50 focus:ring-red-500" :
-                        "border-gray-600 focus:ring-blue-500"
+                    usernameStatus === "taken" ? "border-red-500/50 focus:ring-red-500" :
+                      "border-gray-600 focus:ring-blue-500"
                     }`}
                   required
                 />
