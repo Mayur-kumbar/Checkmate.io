@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toast } from "sonner";
 import { debounce } from "lodash";
 
 type SignupStep = 1 | 2 | 3;
@@ -62,10 +63,10 @@ export default function SignupPage() {
       if (res.data.success) {
         setStep(2);
       } else {
-        alert(res.data.error || "Failed to send verification code");
+        toast.error(res.data.error || "Failed to send verification code");
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || "Signup initialization failed");
+      toast.error(error.response?.data?.error || "Signup initialization failed");
     } finally {
       setIsLoading(false);
     }
@@ -81,10 +82,10 @@ export default function SignupPage() {
         setCompleteToken(res.data.completeToken);
         setStep(3);
       } else {
-        alert(res.data.error || "Invalid code");
+        toast.error(res.data.error || "Invalid code");
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || "Verification failed");
+      toast.error(error.response?.data?.error || "Verification failed");
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +95,7 @@ export default function SignupPage() {
   async function handleComplete(e: React.FormEvent) {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert("Passwords don't match!");
+      toast.error("Passwords don't match!");
       return;
     }
     setIsLoading(true);
@@ -107,10 +108,10 @@ export default function SignupPage() {
       if (res.data.success) {
         router.push("/lobby");
       } else {
-        alert(res.data.error || "Signup completion failed");
+        toast.error(res.data.error || "Signup completion failed");
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || "Signup completion failed");
+      toast.error(error.response?.data?.error || "Signup completion failed");
     } finally {
       setIsLoading(false);
     }

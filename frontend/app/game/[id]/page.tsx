@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import Header from "@/components/Header";
+import { toast } from "sonner";
 
 
 export default function GamePage() {
@@ -210,7 +211,7 @@ export default function GamePage() {
 
   const handleOfferDraw = () => {
     socketRef.current?.emit("offer_draw", { gameId });
-    alert("Draw offer sent!");
+    toast.success("Draw offer sent!");
   };
 
   const handleAcceptDraw = () => {
@@ -219,7 +220,7 @@ export default function GamePage() {
 
   const handleRejectDraw = () => {
     socketRef.current?.emit("reject_draw", { gameId });
-    alert("Draw rejected!");
+    toast.error("Draw rejected!");
   };
 
   const formatTime = (ms: number) => {
@@ -325,7 +326,7 @@ export default function GamePage() {
       });
 
       socket.on("game_over", (data: any) => {
-        alert(`Game over: ${data.result}`);
+        toast.info(`Game over: ${data.result}`);
         router.push("/lobby");
       });
 
@@ -471,11 +472,7 @@ export default function GamePage() {
 
             {/* Chess Board Container */}
             <div className="relative w-full aspect-square max-w-[600px] mx-auto group">
-              {gameStatus && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-gray-900/95 backdrop-blur-sm border-2 border-yellow-500 rounded-2xl px-6 py-3 md:px-8 md:py-4 shadow-2xl">
-                  <div className="text-xl md:text-3xl font-bold text-yellow-400 text-center">{gameStatus}</div>
-                </div>
-              )}
+
               <div className="w-full h-full shadow-2xl rounded-lg overflow-hidden border-2 md:border-4 border-gray-700">
                 <Chessboard
                   options={{
@@ -526,7 +523,9 @@ export default function GamePage() {
               </span>
               {playerColor && (
                 <span className="text-[10px] md:text-sm text-gray-400">
-                  {(chessRef.current.turn() === "w" && playerColor === "white") ||
+                  {gameStatus === "Check!" ? (
+                    <span className="text-red-500 font-bold animate-pulse">⚠️ Check!</span>
+                  ) : (chessRef.current.turn() === "w" && playerColor === "white") ||
                     (chessRef.current.turn() === "b" && playerColor === "black")
                     ? "• Your move"
                     : "• Waiting..."}

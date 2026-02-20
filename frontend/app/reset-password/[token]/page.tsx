@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState("");
@@ -18,7 +19,7 @@ export default function ResetPasswordPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (password !== confirmPassword) {
-            alert("Passwords don't match!");
+            toast.error("Passwords don't match!");
             return;
         }
 
@@ -31,10 +32,10 @@ export default function ResetPasswordPage() {
                     router.push("/login");
                 }, 3000);
             } else {
-                alert(res.data.error || "Failed to reset password");
+                toast.error(res.data.error || "Failed to reset password");
             }
         } catch (error: any) {
-            alert(error.response?.data?.error || "Failed to reset password");
+            toast.error(error.response?.data?.error || "Failed to reset password");
         } finally {
             setIsLoading(false);
         }

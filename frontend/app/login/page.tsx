@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
@@ -19,11 +20,11 @@ export default function LoginPage() {
       if (res.data.success) {
         router.push("/lobby");
       } else {
-        alert(res.data.error || "Login failed");
+        toast.error(res.data.error || "Login failed");
       }
     } catch (error: any) {
       console.error("Login failed:", error);
-      alert(error.response?.data?.error || "Login failed");
+      toast.error(error.response?.data?.error || "Login failed");
     } finally {
       setIsLoading(false);
     }

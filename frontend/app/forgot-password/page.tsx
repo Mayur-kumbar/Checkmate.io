@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -21,10 +22,10 @@ export default function ForgotPasswordPage() {
             if (res.data.success) {
                 setStep(2);
             } else {
-                alert(res.data.error || "Failed to send reset code");
+                toast.error(res.data.error || "Failed to send reset code");
             }
         } catch (error: any) {
-            alert(error.response?.data?.error || "Failed to send reset code");
+            toast.error(error.response?.data?.error || "Failed to send reset code");
         } finally {
             setIsLoading(false);
         }
@@ -38,10 +39,10 @@ export default function ForgotPasswordPage() {
             if (res.data.success) {
                 router.push(`/reset-password/${res.data.resetToken}`);
             } else {
-                alert(res.data.error || "Invalid verification code");
+                toast.error(res.data.error || "Invalid verification code");
             }
         } catch (error: any) {
-            alert(error.response?.data?.error || "Invalid verification code");
+            toast.error(error.response?.data?.error || "Invalid verification code");
         } finally {
             setIsLoading(false);
         }
