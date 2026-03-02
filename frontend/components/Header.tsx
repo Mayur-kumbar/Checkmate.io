@@ -18,6 +18,7 @@ export default function Header({ user, leftActions, rightActions, isGamePage }: 
         try {
             await api.post("/auth/logout");
             router.push("/");
+            router.refresh();
         } catch (error) {
             console.error("Logout failed:", error);
             router.push("/");
