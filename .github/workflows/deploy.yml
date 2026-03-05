@@ -23,13 +23,13 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build -t mayurkumbar05/checkmate-backend ./backend
-          docker push mayurkumbar05/checkmate-backend
+          docker build -t mayurkumbar05/checkmate-backend:latest ./backend
+          docker push mayurkumbar05/checkmate-backend:latest
 
       - name: Build frontend image
         run: |
-          docker build -t mayurkumbar05/checkmate-frontend ./frontend
-          docker push mayurkumbar05/checkmate-frontend
+          docker build -t mayurkumbar05/checkmate-frontend:latest --build-arg NEXT_PUBLIC_API_URL=/api --build-arg NEXT_PUBLIC_SOCKET_URL= ./frontend
+          docker push mayurkumbar05/checkmate-frontend:latest
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
