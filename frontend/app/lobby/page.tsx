@@ -12,6 +12,9 @@ export default function LobbyPage() {
   const socketRef = useRef<any>(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiDifficulty, setAiDifficulty] = useState("medium");
+  const [aiColor, setAiColor] = useState("white");
 
   const router = useRouter();
 
@@ -130,6 +133,13 @@ export default function LobbyPage() {
                   <span className="flex items-center justify-center gap-2">⚔️ Find Game</span>
                 )}
               </button>
+              {!isWaiting && (
+                <button
+                  onClick={() => setShowAiModal(true)}
+                  className="w-full max-w-md px-6 py-4 md:px-8 md:py-6 rounded-xl font-bold text-lg md:text-xl transition-all duration-300 transform bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 shadow-lg shadow-teal-500/30 hover:shadow-teal-500/50">
+                  <span className="flex items-center justify-center gap-2">🤖 Play vs AI</span>
+                </button>
+              )}
               {isWaiting && (
                 <button
                   onClick={() => { setIsWaiting(false); socketRef.current?.emit("cancel_find"); }}
@@ -161,6 +171,78 @@ export default function LobbyPage() {
           </div>
         </div>
       </main>
+
+      {/* AI Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-2xl font-bold mb-6 text-center text-white">Play vs AI</h3>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Difficulty</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {["easy", "medium", "hard", "expert"].map((diff) => (
+                    <button
+                      key={diff}
+                      onClick={() => setAiDifficulty(diff)}
+                      className={`py-2 rounded-lg font-semibold text-sm capitalize transition-colors ${aiDifficulty === diff ? "bg-teal-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"}`}
+                    >
+                      {diff}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                 <label className="block text-sm font-medium text-gray-400 mb-2">Your Color</label>
+                 <div className="grid grid-cols-3 gap-2">
+                   <button
+                     onClick={() => setAiColor("white")}
+                     className={`py-2 rounded-lg font-semibold text-sm transition-colors ${aiColor === "white" ? "bg-gray-100 text-gray-900" : "bg-gray-700 text-gray-400 hover:bg-gray-600"}`}
+                   >
+                     White
+                   </button>
+                   <button
+                     onClick={() => setAiColor("black")}
+                     className={`py-2 rounded-lg font-semibold text-sm transition-colors ${aiColor === "black" ? "bg-gray-900 text-white border border-gray-600" : "bg-gray-700 text-gray-400 hover:bg-gray-600 border border-transparent"}`}
+                   >
+                     Black
+                   </button>
+                   <button
+                     onClick={() => setAiColor("random")}
+                     className={`py-2 rounded-lg font-semibold text-sm transition-colors ${aiColor === "random" ? "bg-gradient-to-r from-gray-500 to-gray-400 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"}`}
+                   >
+                     Random
+                   </button>
+                 </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                 <button
+                   onClick={() => setShowAiModal(false)}
+                   className="flex-1 py-3 rounded-xl font-bold text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={() => {
+                     let finalColor = aiColor;
+                     if (finalColor === "random") finalColor = Math.random() > 0.5 ? "white" : "black";
+                     if (typeof window !== "undefined") {
+                       localStorage.removeItem("ai_game_state");
+                     }
+                     router.push(`/play/ai?difficulty=${aiDifficulty}&color=${finalColor}`);
+                   }}
+                   className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 transition-colors shadow-lg shadow-teal-500/20"
+                 >
+                   Play
+                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Background decoration */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
