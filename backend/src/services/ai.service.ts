@@ -28,7 +28,8 @@ export const getBestMove = (fen: string, difficulty: string): Promise<string> =>
 
     try {
       // Spawn Stockfish process (assumes 'stockfish' is available in system PATH)
-      const engine = spawn("C:\\Users\\Mayur\\OneDrive\\Desktop\\stockfish\\stockfish-windows-x86-64-avx2.exe");
+      const enginePath = process.env.STOCKFISH_PATH || "stockfish";
+      const engine = spawn(enginePath);
       let bestMove = "";
       let errorData = "";
 
