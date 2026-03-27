@@ -10,6 +10,7 @@ services:
       - backend/.env
     environment:
       - REDIS_URL=redis://redis:6379
+      - STOCKFISH_PATH=/usr/games/stockfish
     depends_on:
       - redis
     restart: always
