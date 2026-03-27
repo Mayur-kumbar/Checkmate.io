@@ -9,6 +9,7 @@ import { redis } from "./utils/redis";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
 import gameRoutes from "./routes/game.routes";
+import aiRoutes from "./routes/ai.routes";
 import { socketAuth } from "./socket/auth.middleware";
 import cookieParser from "cookie-parser";
 
@@ -44,6 +45,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/game", gameRoutes);
+app.use("/api/ai", aiRoutes);
 
 const server = http.createServer(app);
 
