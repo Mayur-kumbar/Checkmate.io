@@ -1,5 +1,5 @@
 # Production Build
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -7,12 +7,12 @@ COPY . .
 RUN npm run build
 
 # Runner Stage
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install stockfish for the AI engine
-RUN apk add --no-cache stockfish
+# Install stockfish for the AI engine using apt-get (Debian)
+RUN apt-get update && apt-get install -y stockfish && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
