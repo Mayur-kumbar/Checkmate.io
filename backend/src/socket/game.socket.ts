@@ -51,7 +51,9 @@ export const initSockets = (io: Server) => {
 
         // ❌ skip users who are offline
         const sockets = await io.fetchSockets();
-        const candidateSocket = sockets.find(s => s.data.userId === candidate);
+        const candidateSocket = sockets.find(
+          (s) => s.data.userId === candidate,
+        );
         if (!candidateSocket) continue;
 
         opponentUserId = candidate;
@@ -82,13 +84,17 @@ export const initSockets = (io: Server) => {
       await redis.set(`player:${userId}`, gameId);
 
       // join sockets to room
-      console.log(`Creating game ${gameId} for White:${opponentUserId} and Black:${userId}`);
+      console.log(
+        `Creating game ${gameId} for White:${opponentUserId} and Black:${userId}`,
+      );
 
       await socket.join(gameId);
       await opponentSocket?.join(gameId);
 
       const roomSockets = await io.in(gameId).fetchSockets();
-      console.log(`Room ${gameId} has ${roomSockets.length} sockets. Expected 2.`);
+      console.log(
+        `Room ${gameId} has ${roomSockets.length} sockets. Expected 2.`,
+      );
 
       // notify both
       io.to(gameId).emit("game_start", game);
@@ -100,6 +106,8 @@ export const initSockets = (io: Server) => {
     });
 
     socket.on("move", async (payload) => {
+      const serverReceivedAt = Date.now(); // ⏱️ ADD THIS
+
       let data: any;
       try {
         data = typeof payload === "string" ? JSON.parse(payload) : payload;
@@ -107,7 +115,14 @@ export const initSockets = (io: Server) => {
         return socket.emit("invalid_move", "Invalid JSON");
       }
 
-      const { gameId, move } = data;
+      const { gameId, move, clientSentAt } = data; // ⏱️ ADD clientSentAt HERE
+
+      if (clientSentAt) {
+        // ⏱️ ADD THIS BLOCK
+        console.log(
+          `[TIMING] Network + JSON parse: ${serverReceivedAt - clientSentAt}ms`,
+        );
+      }
       if (!gameId || !move) {
         return socket.emit("invalid_move", "Malformed payload");
       }
@@ -132,7 +147,19 @@ export const initSockets = (io: Server) => {
 
       updatedGame.drawOffered = null;
       await GameService.updateGame(gameId, updatedGame);
-      io.to(gameId).emit("game_update", updatedGame);
+
+      const serverProcessedAt = Date.now(); // ⏱️ ADD THIS
+      if (clientSentAt) {
+        // ⏱️ ADD THIS BLOCK
+        console.log(
+          `[TIMING] Total server processing (validation + Redis write): ${serverProcessedAt - clientSentAt}ms`,
+        );
+      }
+
+      io.to(gameId).emit("game_update", {
+        ...updatedGame,
+        serverSentAt: serverProcessedAt,
+      }); // ⏱️ MODIFIED — added serverSentAt
 
       if (updatedGame.status === "finished") {
         await GameService.persistFinishedGame(updatedGame, chess);
@@ -153,7 +180,7 @@ export const initSockets = (io: Server) => {
         io.to(gameId).emit("game_over", {
           moves: updatedGame.moves,
           result,
-          winner
+          winner,
         });
       }
     });
@@ -198,8 +225,7 @@ export const initSockets = (io: Server) => {
       await GameService.updateGame(gameId, game);
 
       io.to(gameId).emit("game_update", game);
-
-    })
+    });
 
     socket.on("accept_draw", async (data: any) => {
       const { gameId } = data;
@@ -210,7 +236,10 @@ export const initSockets = (io: Server) => {
       if (game.drawOffered !== playerColor) {
         game.status = "finished";
         await GameService.updateGame(gameId, game);
-        io.to(gameId).emit("game_over", { result: "draw", reason: "agreement" });
+        io.to(gameId).emit("game_over", {
+          result: "draw",
+          reason: "agreement",
+        });
         await GameService.persistDrawGame(game, playerColor);
       }
     });
@@ -233,8 +262,10 @@ export const initSockets = (io: Server) => {
       const now = Date.now();
       const elapsed = now - game.lastMoveAt;
 
-      const isWhiteTimeout = game.turn === "white" && (game.whiteTime - elapsed) <= 0;
-      const isBlackTimeout = game.turn === "black" && (game.blackTime - elapsed) <= 0;
+      const isWhiteTimeout =
+        game.turn === "white" && game.whiteTime - elapsed <= 0;
+      const isBlackTimeout =
+        game.turn === "black" && game.blackTime - elapsed <= 0;
 
       if (isWhiteTimeout || isBlackTimeout) {
         const winner = isWhiteTimeout ? "black" : "white";
@@ -243,7 +274,7 @@ export const initSockets = (io: Server) => {
           status: "finished",
           whiteTime: isWhiteTimeout ? 0 : game.whiteTime,
           blackTime: isBlackTimeout ? 0 : game.blackTime,
-          lastMoveAt: now
+          lastMoveAt: now,
         };
 
         await GameService.updateGame(gameId, updatedGame);
@@ -251,13 +282,16 @@ export const initSockets = (io: Server) => {
         io.to(gameId).emit("game_over", {
           result: "timeout",
           winner,
-          moves: updatedGame.moves
+          moves: updatedGame.moves,
         });
 
         // Persist to DB
         // Using persistFinishedGame would require a chess object, but for timeout we can just use the final state
         // Let's create a minimal chess object or just a dedicated persist method
-        await GameService.persistAbandonedGame(updatedGame, winner === "white" ? "black" : "white"); // Close enough for now
+        await GameService.persistAbandonedGame(
+          updatedGame,
+          winner === "white" ? "black" : "white",
+        ); // Close enough for now
       }
     });
 
