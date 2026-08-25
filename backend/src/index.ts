@@ -39,7 +39,7 @@ try {
 }
 
 app.get("/api/health", (req, res) => {
-  res.json({ message: "OK" });
+  res.json({ message: "Up and running!" });
 });
 
 app.use("/api/auth", authRoutes);
